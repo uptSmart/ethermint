@@ -3,6 +3,8 @@ package keeper_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tharsis/ethermint/crypto/ethsecp256k1"
+	"github.com/tharsis/ethermint/server/config"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -854,4 +856,37 @@ func (suite *KeeperTestSuite) TestTraceBlock() {
 	}
 
 	suite.dynamicTxFee = false // reset flag
+}
+
+func (suite *KeeperTestSuite) TestNonceInQuery() {
+	suite.SetupTest()
+	priv, err := ethsecp256k1.GenerateKey()
+	suite.Require().NoError(err)
+	address := common.BytesToAddress(priv.PubKey().Address().Bytes())
+	suite.Require().Equal(uint64(0), suite.app.EvmKeeper.GetNonce(address))
+	supply := sdk.NewIntWithDecimal(1000, 18).BigInt()
+
+	// accupy nonce 0
+	_ = suite.DeployTestContract(suite.T(), address, supply)
+
+	// do an EthCall/EstimateGas with nonce 0
+	ctorArgs, err := types.ERC20Contract.ABI.Pack("", address, supply)
+	data := append(types.ERC20Contract.Bin, ctorArgs...)
+	args, err := json.Marshal(&types.TransactionArgs{
+		From: &address,
+		Data: (*hexutil.Bytes)(&data),
+	})
+	suite.Require().NoError(err)
+
+	_, err = suite.queryClient.EstimateGas(sdk.WrapSDKContext(suite.ctx), &types.EthCallRequest{
+		Args:   args,
+		GasCap: uint64(config.DefaultGasCap),
+	})
+	suite.Require().NoError(err)
+
+	_, err = suite.queryClient.EthCall(sdk.WrapSDKContext(suite.ctx), &types.EthCallRequest{
+		Args:   args,
+		GasCap: uint64(config.DefaultGasCap),
+	})
+	suite.Require().NoError(err)
 }

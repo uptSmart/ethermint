@@ -227,6 +227,8 @@ func (k Keeper) EthCall(c context.Context, req *types.EthCallRequest) (*types.Ms
 	if types.IsLondon(ethCfg, ctx.BlockHeight()) {
 		baseFee = k.feeMarketKeeper.GetBaseFee(ctx)
 	}
+	nonce := k.GetNonce(args.GetFrom())
+	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	msg, err := args.ToMessage(req.GasCap, baseFee)
 	if err != nil {
@@ -296,6 +298,9 @@ func (k Keeper) EstimateGas(c context.Context, req *types.EthCallRequest) (*type
 	if types.IsLondon(cfg.ChainConfig, ctx.BlockHeight()) {
 		baseFee = k.feeMarketKeeper.GetBaseFee(ctx)
 	}
+
+	nonce := k.GetNonce(args.GetFrom())
+	args.Nonce = (*hexutil.Uint64)(&nonce)
 
 	// Create a helper to check if a gas allowance results in an executable transaction
 	executable := func(gas uint64) (vmerror bool, rsp *types.MsgEthereumTxResponse, err error) {
