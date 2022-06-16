@@ -3,8 +3,6 @@ package keeper_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tharsis/ethermint/crypto/ethsecp256k1"
-	"github.com/tharsis/ethermint/server/config"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,6 +11,8 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/tharsis/ethermint/crypto/ethsecp256k1"
+	"github.com/tharsis/ethermint/server/config"
 	ethermint "github.com/tharsis/ethermint/types"
 	"github.com/tharsis/ethermint/x/evm/types"
 )
