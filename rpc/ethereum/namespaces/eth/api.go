@@ -57,6 +57,7 @@ func NewPublicAPI(
 	nonceLock *rpctypes.AddrLocker,
 ) *PublicAPI {
 	eip155ChainID, err := ethermint.ParseChainID(clientCtx.ChainID)
+
 	if err != nil {
 		panic(err)
 	}

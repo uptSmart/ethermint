@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"github.com/palantir/stacktrace"
+
+	"github.com/tharsis/ethermint/crypto/ethsecp256k1"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -28,7 +31,32 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 	sender := msg.From
 	tx := msg.AsTransaction()
 
-	response, err := k.ApplyTransaction(tx)
+	var response *types.MsgEthereumTxResponse
+	var err error
+	// determine the algorithm type of the key
+	/*****
+	* sheldon@bianjie.ai
+	**/
+	ethAddr := common.HexToAddress(sender)
+	cosmosAddr := sdk.AccAddress(ethAddr.Bytes())
+	account := k.accountKeeper.GetAccount(ctx, cosmosAddr)
+	pubKey := account.GetPubKey()
+	if pubKey == nil {
+		k.Logger(ctx).Debug(
+			"cosmos_addr", cosmosAddr.String(),
+			"info_msg", "can not get publicKey for address",
+		)
+		response, err = k.ApplyTransaction(tx)
+	} else {
+		pubKeyAlgo := pubKey.Type()
+
+		if pubKeyAlgo == ethsecp256k1.KeyType {
+			response, err = k.ApplyTransaction(tx)
+		} else {
+			response, err = k.ApplyTransactionSm2(msg)
+		}
+	}
+
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "failed to apply transaction")
 	}
