@@ -53,6 +53,9 @@ type Keeper struct {
 
 	// EVM Hooks for tx post-processing
 	hooks types.EvmHooks
+
+	// sheldon@bianjie.ai
+	Transfer vm.TransferFunc
 }
 
 // NewKeeper generates new evm module keeper
