@@ -16,6 +16,8 @@ import (
 	"github.com/tharsis/ethermint/x/evm/types"
 )
 
+const flagEVMPayer = "evm-payer"
+
 // GetTxCmd returns the transaction commands for this module
 func GetTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -58,6 +60,14 @@ func NewRawTxCmd() *cobra.Command {
 			rsp, err := rpctypes.NewQueryClient(clientCtx).Params(cmd.Context(), &types.QueryParamsRequest{})
 			if err != nil {
 				return err
+			}
+
+			feePayerAddr, err := cmd.Flags().GetString(flagEVMPayer)
+			if err != nil {
+				return err
+			}
+			if len(feePayerAddr) > 0 {
+				msg.SetFeePayer(feePayerAddr)
 			}
 
 			tx, err := msg.BuildTx(clientCtx.TxConfig.NewTxBuilder(), rsp.Params.EvmDenom)
@@ -107,5 +117,7 @@ func NewRawTxCmd() *cobra.Command {
 	}
 
 	flags.AddTxFlagsToCmd(cmd)
+	cmd.Flags().String(flagEVMPayer, "", "Fee account pays fees for the transaction instead of deducting from the signer")
+
 	return cmd
 }
