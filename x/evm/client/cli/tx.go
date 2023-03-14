@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/input"
@@ -67,6 +69,9 @@ func NewRawTxCmd() *cobra.Command {
 				return err
 			}
 			if len(feePayerAddr) > 0 {
+				if !common.IsHexAddress(feePayerAddr) {
+					return errors.New("feePayerAddr must be hex address")
+				}
 				msg.SetFeePayer(feePayerAddr)
 			}
 
@@ -117,7 +122,7 @@ func NewRawTxCmd() *cobra.Command {
 	}
 
 	flags.AddTxFlagsToCmd(cmd)
-	cmd.Flags().String(flagEVMPayer, "", "Fee account pays fees for the transaction instead of deducting from the signer")
+	cmd.Flags().String(flagEVMPayer, "", "Evm FeeGrant Account")
 
 	return cmd
 }
