@@ -85,7 +85,6 @@ func (avd EthAccountVerificationDecorator) AnteHandle(
 				return ctx, errorsmod.Wrap(err, "failed to check feePayer balance")
 			}
 		} else {
-
 			// check whether the sender address is EOA
 			fromAddr := common.BytesToAddress(from)
 			acct := avd.evmKeeper.GetAccount(ctx, fromAddr)

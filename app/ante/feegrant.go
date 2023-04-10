@@ -64,9 +64,7 @@ func (ev EthFeeGrantValidator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate b
 				return ctx, sdkerrors.Wrapf(err,
 					"%s(%s) not allowed to pay fees from %s", sender.Hex(), feeGranteeCosmosAddr, feePayer)
 			}
-
 		}
-
 	}
 	return next(ctx, tx, simulate)
 }
