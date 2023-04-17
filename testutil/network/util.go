@@ -3,6 +3,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"path/filepath"
 	"time"
 
@@ -58,6 +59,7 @@ func startInProcess(cfg Config, val *Validator) error {
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmCfg.Instrumentation),
 		logger.With("module", val.Moniker),
+		[]trace.TracerProviderOption{},
 	)
 	if err != nil {
 		return err

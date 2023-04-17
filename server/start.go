@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"io"
 	"net/http"
 	"os"
@@ -304,6 +305,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(cfg.Instrumentation),
 		ctx.Logger.With("server", "node"),
+		[]trace.TracerProviderOption{},
 	)
 	if err != nil {
 		logger.Error("failed init node", "error", err.Error())
