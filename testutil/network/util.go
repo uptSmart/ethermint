@@ -59,7 +59,7 @@ func startInProcess(cfg Config, val *Validator) error {
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmCfg.Instrumentation),
 		logger.With("module", val.Moniker),
-		[]trace.TracerProviderOption{},
+		[]trace.TracerProviderOption{}, nil,
 	)
 	if err != nil {
 		return err
