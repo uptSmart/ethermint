@@ -44,7 +44,12 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 		NewMinGasPriceDecorator(options.FeeMarketKeeper, options.EvmKeeper),
 		authante.NewValidateMemoDecorator(options.AccountKeeper),
 		authante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
-		authante.NewDeductFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TxFeeChecker),
+		authante.NewDeductFeeDecorator(
+			options.AccountKeeper,
+			options.BankKeeper,
+			options.FeegrantKeeper,
+			options.TxFeeChecker,
+		),
 		// SetPubKeyDecorator must be called before all signature verification decorators
 		authante.NewSetPubKeyDecorator(options.AccountKeeper),
 		authante.NewValidateSigCountDecorator(options.AccountKeeper),
@@ -93,12 +98,20 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 
 	sigTx, ok := tx.(authsigning.SigVerifiableTx)
 	if !ok {
-		return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType, "tx %T doesn't implement authsigning.SigVerifiableTx", tx)
+		return ctx, errorsmod.Wrapf(
+			errortypes.ErrInvalidType,
+			"tx %T doesn't implement authsigning.SigVerifiableTx",
+			tx,
+		)
 	}
 
 	authSignTx, ok := tx.(authsigning.Tx)
 	if !ok {
-		return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType, "tx %T doesn't implement the authsigning.Tx interface", tx)
+		return ctx, errorsmod.Wrapf(
+			errortypes.ErrInvalidType,
+			"tx %T doesn't implement the authsigning.Tx interface",
+			tx,
+		)
 	}
 
 	// stdSigs contains the sequence number, account number, and signatures.
@@ -121,7 +134,12 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 
 	// check that signer length and signature length are the same
 	if len(sigs) != len(signerAddrs) {
-		return ctx, errorsmod.Wrapf(errortypes.ErrorInvalidSigner, "invalid number of signers;  expected: %d, got %d", len(signerAddrs), len(sigs))
+		return ctx, errorsmod.Wrapf(
+			errortypes.ErrorInvalidSigner,
+			"invalid number of signers;  expected: %d, got %d",
+			len(signerAddrs),
+			len(sigs),
+		)
 	}
 
 	// EIP712 has just one signature, avoid looping here and only read index 0
@@ -167,7 +185,12 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 	}
 
 	if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx); err != nil {
-		errMsg := fmt.Errorf("signature verification failed; please verify account number (%d) and chain-id (%s): %w", accNum, chainID, err)
+		errMsg := fmt.Errorf(
+			"signature verification failed; please verify account number (%d) and chain-id (%s): %w",
+			accNum,
+			chainID,
+			err,
+		)
 		return ctx, errorsmod.Wrap(errortypes.ErrUnauthorized, errMsg.Error())
 	}
 
@@ -249,7 +272,7 @@ func VerifySignature(
 			FeePayer: feePayer,
 		}
 
-		typedData, err := eip712.WrapTxToTypedData(ethermintCodec, extOpt.TypedDataChainID, msgs[0], txBytes, feeDelegation)
+		typedData, err := eip712.LegacyWrapTxToTypedData(ethermintCodec, extOpt.TypedDataChainID, msgs[0], txBytes, feeDelegation)
 		if err != nil {
 			return errorsmod.Wrap(err, "failed to create EIP-712 typed data from tx")
 		}

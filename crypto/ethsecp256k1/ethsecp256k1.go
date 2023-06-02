@@ -76,7 +76,8 @@ func (privKey PrivKey) PubKey() cryptotypes.PubKey {
 
 // Equals returns true if two ECDSA private keys are equal and false otherwise.
 func (privKey PrivKey) Equals(other cryptotypes.LedgerPrivKey) bool {
-	return privKey.Type() == other.Type() && subtle.ConstantTimeCompare(privKey.Bytes(), other.Bytes()) == 1
+	return privKey.Type() == other.Type() &&
+		subtle.ConstantTimeCompare(privKey.Bytes(), other.Bytes()) == 1
 }
 
 // Type returns eth_secp256k1
@@ -183,7 +184,12 @@ func (pubKey PubKey) MarshalAmino() ([]byte, error) {
 // UnmarshalAmino overrides Amino binary marshaling.
 func (pubKey *PubKey) UnmarshalAmino(bz []byte) error {
 	if len(bz) != PubKeySize {
-		return errorsmod.Wrapf(errortypes.ErrInvalidPubKey, "invalid pubkey size, expected %d, got %d", PubKeySize, len(bz))
+		return errorsmod.Wrapf(
+			errortypes.ErrInvalidPubKey,
+			"invalid pubkey size, expected %d, got %d",
+			PubKeySize,
+			len(bz),
+		)
 	}
 	pubKey.Key = bz
 
@@ -221,7 +227,17 @@ func (pubKey PubKey) verifySignatureAsEIP712(msg, sig []byte) bool {
 		return false
 	}
 
-	return pubKey.verifySignatureECDSA(eip712Bytes, sig)
+	if pubKey.verifySignatureECDSA(eip712Bytes, sig) {
+		return true
+	}
+
+	// Try verifying the signature using the legacy EIP-712 encoding
+	legacyEIP712Bytes, err := eip712.LegacyGetEIP712BytesForMsg(msg)
+	if err != nil {
+		return false
+	}
+
+	return pubKey.verifySignatureECDSA(legacyEIP712Bytes, sig)
 }
 
 // Perform standard ECDSA signature verification for the given raw bytes and signature.
