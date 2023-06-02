@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
@@ -16,16 +15,7 @@ import (
 	ethermint "github.com/evmos/ethermint/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 )
-
-type ChainIDBuilder func(chainID string) string
-
-type Config struct {
-	InterfaceRegistry codectypes.InterfaceRegistry
-	Amino             *codec.LegacyAmino
-	ChainIDBuilder    ChainIDBuilder
-}
 
 type aminoMessage struct {
 	Type  string      `json:"type"`
@@ -33,9 +23,8 @@ type aminoMessage struct {
 }
 
 var (
-	protoCodec     codec.ProtoCodecMarshaler
-	aminoCodec     *codec.LegacyAmino
-	chainIDBuilder ChainIDBuilder
+	protoCodec codec.ProtoCodecMarshaler
+	aminoCodec *codec.LegacyAmino
 )
 
 // SetEncodingConfig set the encoding config to the singleton codecs (Amino and Protobuf).
@@ -45,16 +34,6 @@ var (
 func SetEncodingConfig(cfg params.EncodingConfig) {
 	aminoCodec = cfg.Amino
 	protoCodec = codec.NewProtoCodec(cfg.InterfaceRegistry)
-}
-
-// SetEncodingConfig set the encoding config to the singleton codecs (Amino and Protobuf).
-// The process of unmarshaling SignDoc bytes into a SignDoc object requires having a codec
-// populated with all relevant message types. As a result, we must call this method on app
-// initialization with the app's encoding config.
-func SetConfig(cfg Config) {
-	aminoCodec = cfg.Amino
-	protoCodec = codec.NewProtoCodec(cfg.InterfaceRegistry)
-	chainIDBuilder = cfg.ChainIDBuilder
 }
 
 // Get the EIP-712 object bytes for the given SignDoc bytes by first decoding the bytes into
@@ -93,14 +72,6 @@ func GetEIP712TypedDataForMsg(signDocBytes []byte) (apitypes.TypedData, error) {
 		errAmino,
 		errProtobuf,
 	)
-}
-
-// ParseChainID override the default ethermint.ParseChainID
-func ParseChainID(chainID string) (*big.Int, error) {
-	if chainIDBuilder != nil {
-		chainID = chainIDBuilder(chainID)
-	}
-	return ethermint.ParseChainID(chainID)
 }
 
 // isValidEIP712Payload ensures that the given TypedData does not contain empty fields from
@@ -152,7 +123,7 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		FeePayer: feePayer,
 	}
 
-	chainID, err := ParseChainID(aminoDoc.ChainID)
+	chainID, err := ethermint.ParseChainID(aminoDoc.ChainID)
 	if err != nil {
 		return apitypes.TypedData{}, errors.New("invalid chain ID passed as argument")
 	}
@@ -234,7 +205,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 
 	signerInfo := authInfo.SignerInfos[0]
 
-	chainID, err := ParseChainID(signDoc.ChainId)
+	chainID, err := ethermint.ParseChainID(signDoc.ChainId)
 	if err != nil {
 		return apitypes.TypedData{}, fmt.Errorf("invalid chain ID passed as argument: %w", err)
 	}
