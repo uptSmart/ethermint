@@ -67,19 +67,13 @@ func GetEIP712TypedDataForMsg(signDocBytes []byte) (apitypes.TypedData, error) {
 		return typedDataProtobuf, nil
 	}
 
-	return apitypes.TypedData{}, fmt.Errorf(
-		"could not decode sign doc as either Amino or Protobuf.\n amino: %v\n protobuf: %v",
-		errAmino,
-		errProtobuf,
-	)
+	return apitypes.TypedData{}, fmt.Errorf("could not decode sign doc as either Amino or Protobuf.\n amino: %v\n protobuf: %v", errAmino, errProtobuf)
 }
 
 // isValidEIP712Payload ensures that the given TypedData does not contain empty fields from
 // an improper initialization.
 func isValidEIP712Payload(typedData apitypes.TypedData) bool {
-	return len(typedData.Message) != 0 && len(typedData.Types) != 0 &&
-		typedData.PrimaryType != "" &&
-		typedData.Domain != apitypes.TypedDataDomain{}
+	return len(typedData.Message) != 0 && len(typedData.Types) != 0 && typedData.PrimaryType != "" && typedData.Domain != apitypes.TypedDataDomain{}
 }
 
 // decodeAminoSignDoc attempts to decode the provided sign doc (bytes) as an Amino payload
@@ -136,10 +130,7 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		feeDelegation,
 	)
 	if err != nil {
-		return apitypes.TypedData{}, fmt.Errorf(
-			"could not convert to EIP712 representation: %w",
-			err,
-		)
+		return apitypes.TypedData{}, fmt.Errorf("could not convert to EIP712 representation: %w", err)
 	}
 
 	return typedData, nil
@@ -169,18 +160,12 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	}
 
 	// Until support for these fields is added, throw an error at their presence
-	if body.TimeoutHeight != 0 || len(body.ExtensionOptions) != 0 ||
-		len(body.NonCriticalExtensionOptions) != 0 {
-		return apitypes.TypedData{}, errors.New(
-			"body contains unsupported fields: TimeoutHeight, ExtensionOptions, or NonCriticalExtensionOptions",
-		)
+	if body.TimeoutHeight != 0 || len(body.ExtensionOptions) != 0 || len(body.NonCriticalExtensionOptions) != 0 {
+		return apitypes.TypedData{}, errors.New("body contains unsupported fields: TimeoutHeight, ExtensionOptions, or NonCriticalExtensionOptions")
 	}
 
 	if len(authInfo.SignerInfos) != 1 {
-		return apitypes.TypedData{}, fmt.Errorf(
-			"invalid number of signer infos provided, expected 1 got %v",
-			len(authInfo.SignerInfos),
-		)
+		return apitypes.TypedData{}, fmt.Errorf("invalid number of signer infos provided, expected 1 got %v", len(authInfo.SignerInfos))
 	}
 
 	// Validate payload messages
@@ -188,10 +173,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	for i, protoMsg := range body.Messages {
 		var m sdk.Msg
 		if err := protoCodec.UnpackAny(protoMsg, &m); err != nil {
-			return apitypes.TypedData{}, fmt.Errorf(
-				"could not unpack message object with error %w",
-				err,
-			)
+			return apitypes.TypedData{}, fmt.Errorf("could not unpack message object with error %w", err)
 		}
 		msgs[i] = m
 	}
@@ -252,9 +234,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 // so the module does not panic if either codec is not found.
 func validateCodecInit() error {
 	if aminoCodec == nil || protoCodec == nil {
-		return errors.New(
-			"missing codec: codecs have not been properly initialized using SetEncodingConfig",
-		)
+		return errors.New("missing codec: codecs have not been properly initialized using SetEncodingConfig")
 	}
 
 	return nil
@@ -287,9 +267,7 @@ func validatePayloadMessages(msgs []sdk.Msg) error {
 		}
 
 		if t != msgType {
-			return errors.New(
-				"unable to build EIP-712 payload: different types of messages detected",
-			)
+			return errors.New("unable to build EIP-712 payload: different types of messages detected")
 		}
 
 		if !msgSigner.Equals(m.GetSigners()[0]) {

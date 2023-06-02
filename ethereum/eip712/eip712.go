@@ -36,10 +36,7 @@ func WrapTxToTypedData(
 	txData := make(map[string]interface{})
 
 	if err := json.Unmarshal(data, &txData); err != nil {
-		return apitypes.TypedData{}, errorsmod.Wrap(
-			errortypes.ErrJSONUnmarshal,
-			"failed to JSON unmarshal data",
-		)
+		return apitypes.TypedData{}, errorsmod.Wrap(errortypes.ErrJSONUnmarshal, "failed to JSON unmarshal data")
 	}
 
 	domain := apitypes.TypedDataDomain{
@@ -58,10 +55,7 @@ func WrapTxToTypedData(
 	if feeDelegation != nil {
 		feeInfo, ok := txData["fee"].(map[string]interface{})
 		if !ok {
-			return apitypes.TypedData{}, errorsmod.Wrap(
-				errortypes.ErrInvalidType,
-				"cannot parse fee from tx data",
-			)
+			return apitypes.TypedData{}, errorsmod.Wrap(errortypes.ErrInvalidType, "cannot parse fee from tx data")
 		}
 
 		feeInfo["feePayer"] = feeDelegation.FeePayer.String()
@@ -88,11 +82,7 @@ type FeeDelegationOptions struct {
 	FeePayer sdk.AccAddress
 }
 
-func extractMsgTypes(
-	cdc codectypes.AnyUnpacker,
-	msgTypeName string,
-	msg sdk.Msg,
-) (apitypes.Types, error) {
+func extractMsgTypes(cdc codectypes.AnyUnpacker, msgTypeName string, msg sdk.Msg) (apitypes.Types, error) {
 	rootTypes := apitypes.Types{
 		"EIP712Domain": {
 			{
@@ -150,12 +140,7 @@ func extractMsgTypes(
 
 const typeDefPrefix = "_"
 
-func walkFields(
-	cdc codectypes.AnyUnpacker,
-	typeMap apitypes.Types,
-	rootType string,
-	in interface{},
-) (err error) {
+func walkFields(cdc codectypes.AnyUnpacker, typeMap apitypes.Types, rootType string, in interface{}) (err error) {
 	defer doRecover(&err)
 
 	t := reflect.TypeOf(in)
@@ -298,8 +283,7 @@ func traverseFields(
 		ethTyp := typToEth(fieldType)
 		if len(ethTyp) > 0 {
 			// Support array of uint64
-			if isCollection && fieldType.Kind() != reflect.Slice &&
-				fieldType.Kind() != reflect.Array {
+			if isCollection && fieldType.Kind() != reflect.Slice && fieldType.Kind() != reflect.Array {
 				ethTyp += "[]"
 			}
 
@@ -359,10 +343,7 @@ func jsonNameFromTag(tag reflect.StructTag) string {
 }
 
 // Unpack the given Any value with Type/Value deconstruction
-func unpackAny(
-	cdc codectypes.AnyUnpacker,
-	field reflect.Value,
-) (reflect.Type, reflect.Value, error) {
+func unpackAny(cdc codectypes.AnyUnpacker, field reflect.Value) (reflect.Type, reflect.Value, error) {
 	any, ok := field.Interface().(*codectypes.Any)
 	if !ok {
 		return nil, reflect.Value{}, errorsmod.Wrapf(errortypes.ErrPackAny, "%T", field.Interface())
