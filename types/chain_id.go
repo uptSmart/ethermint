@@ -42,10 +42,6 @@ func IsValidChainID(chainID string) bool {
 // ParseChainID parses a string chain identifier's epoch to an Ethereum-compatible
 // chain-id in *big.Int format. The function returns an error if the chain-id has an invalid format
 func ParseChainID(chainID string) (*big.Int, error) {
-	if !IsValidChainID(chainID) && chainIDBuilder != nil {
-		chainID = chainIDBuilder(chainID)
-	}
-
 	chainID = strings.TrimSpace(chainID)
 	if len(chainID) > 48 {
 		return nil, errorsmod.Wrapf(
@@ -54,6 +50,8 @@ func ParseChainID(chainID string) (*big.Int, error) {
 			chainID,
 		)
 	}
+
+	chainID = buildChainID(chainID)
 
 	matches := ethermintChainID.FindStringSubmatch(chainID)
 	if matches == nil || len(matches) != 4 || matches[1] == "" {
@@ -71,4 +69,11 @@ func ParseChainID(chainID string) (*big.Int, error) {
 	}
 
 	return chainIDInt, nil
+}
+
+func buildChainID(chainID string) string {
+	if chainIDBuilder == nil || IsValidChainID(chainID) {
+		return chainID
+	}
+	return chainIDBuilder(chainID)
 }
