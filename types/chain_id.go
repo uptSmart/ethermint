@@ -22,11 +22,14 @@ var (
 		regexEpochSeparator,
 		regexEpoch))
 
-	chainIDBuilder func(chainID string) string
+	chainIDBuilder ChainIDBuilder
 )
 
+// ChainIDBuilder build a chainId that meets the requirements of ethermint
+type ChainIDBuilder func(chainID string) (string, error)
+
 // SetChainIDBuilder return a chainId that meets the requirements of ethermint
-func SetChainIDBuilder(builder func(chainID string) string) {
+func SetChainIDBuilder(builder ChainIDBuilder) {
 	chainIDBuilder = builder
 }
 
@@ -51,7 +54,13 @@ func ParseChainID(chainID string) (*big.Int, error) {
 		)
 	}
 
-	chainID = buildChainID(chainID)
+	chainID, err := buildChainID(chainID)
+	if err != nil {
+		return nil, errorsmod.Wrap(
+			ErrInvalidChainID,
+			err.Error(),
+		)
+	}
 
 	matches := ethermintChainID.FindStringSubmatch(chainID)
 	if matches == nil || len(matches) != 4 || matches[1] == "" {
@@ -71,9 +80,9 @@ func ParseChainID(chainID string) (*big.Int, error) {
 	return chainIDInt, nil
 }
 
-func buildChainID(chainID string) string {
-	if chainIDBuilder == nil || IsValidChainID(chainID) {
-		return chainID
+func buildChainID(chainID string) (string, error) {
+	if chainIDBuilder == nil {
+		return chainID, nil
 	}
 	return chainIDBuilder(chainID)
 }
