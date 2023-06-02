@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/cosmos/cosmos-sdk/simapp/params"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
@@ -15,7 +16,16 @@ import (
 	ethermint "github.com/evmos/ethermint/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 )
+
+type ChainIDBuilder func(chainID string) string
+
+type Config struct {
+	InterfaceRegistry codectypes.InterfaceRegistry
+	Amino             *codec.LegacyAmino
+	ChainIDBuilder    ChainIDBuilder
+}
 
 type aminoMessage struct {
 	Type  string      `json:"type"`
@@ -23,8 +33,9 @@ type aminoMessage struct {
 }
 
 var (
-	protoCodec codec.ProtoCodecMarshaler
-	aminoCodec *codec.LegacyAmino
+	protoCodec     codec.ProtoCodecMarshaler
+	aminoCodec     *codec.LegacyAmino
+	chainIDBuilder ChainIDBuilder
 )
 
 // SetEncodingConfig set the encoding config to the singleton codecs (Amino and Protobuf).
@@ -34,6 +45,16 @@ var (
 func SetEncodingConfig(cfg params.EncodingConfig) {
 	aminoCodec = cfg.Amino
 	protoCodec = codec.NewProtoCodec(cfg.InterfaceRegistry)
+}
+
+// SetEncodingConfig set the encoding config to the singleton codecs (Amino and Protobuf).
+// The process of unmarshaling SignDoc bytes into a SignDoc object requires having a codec
+// populated with all relevant message types. As a result, we must call this method on app
+// initialization with the app's encoding config.
+func SetConfig(cfg Config) {
+	aminoCodec = cfg.Amino
+	protoCodec = codec.NewProtoCodec(cfg.InterfaceRegistry)
+	chainIDBuilder = cfg.ChainIDBuilder
 }
 
 // Get the EIP-712 object bytes for the given SignDoc bytes by first decoding the bytes into
@@ -67,13 +88,27 @@ func GetEIP712TypedDataForMsg(signDocBytes []byte) (apitypes.TypedData, error) {
 		return typedDataProtobuf, nil
 	}
 
-	return apitypes.TypedData{}, fmt.Errorf("could not decode sign doc as either Amino or Protobuf.\n amino: %v\n protobuf: %v", errAmino, errProtobuf)
+	return apitypes.TypedData{}, fmt.Errorf(
+		"could not decode sign doc as either Amino or Protobuf.\n amino: %v\n protobuf: %v",
+		errAmino,
+		errProtobuf,
+	)
+}
+
+// ParseChainID override the default ethermint.ParseChainID
+func ParseChainID(chainID string) (*big.Int, error) {
+	if chainIDBuilder != nil {
+		chainID = chainIDBuilder(chainID)
+	}
+	return ethermint.ParseChainID(chainID)
 }
 
 // isValidEIP712Payload ensures that the given TypedData does not contain empty fields from
 // an improper initialization.
 func isValidEIP712Payload(typedData apitypes.TypedData) bool {
-	return len(typedData.Message) != 0 && len(typedData.Types) != 0 && typedData.PrimaryType != "" && typedData.Domain != apitypes.TypedDataDomain{}
+	return len(typedData.Message) != 0 && len(typedData.Types) != 0 &&
+		typedData.PrimaryType != "" &&
+		typedData.Domain != apitypes.TypedDataDomain{}
 }
 
 // decodeAminoSignDoc attempts to decode the provided sign doc (bytes) as an Amino payload
@@ -117,7 +152,7 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		FeePayer: feePayer,
 	}
 
-	chainID, err := ethermint.ParseChainID(aminoDoc.ChainID)
+	chainID, err := ParseChainID(aminoDoc.ChainID)
 	if err != nil {
 		return apitypes.TypedData{}, errors.New("invalid chain ID passed as argument")
 	}
@@ -130,7 +165,10 @@ func decodeAminoSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 		feeDelegation,
 	)
 	if err != nil {
-		return apitypes.TypedData{}, fmt.Errorf("could not convert to EIP712 representation: %w", err)
+		return apitypes.TypedData{}, fmt.Errorf(
+			"could not convert to EIP712 representation: %w",
+			err,
+		)
 	}
 
 	return typedData, nil
@@ -160,12 +198,18 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	}
 
 	// Until support for these fields is added, throw an error at their presence
-	if body.TimeoutHeight != 0 || len(body.ExtensionOptions) != 0 || len(body.NonCriticalExtensionOptions) != 0 {
-		return apitypes.TypedData{}, errors.New("body contains unsupported fields: TimeoutHeight, ExtensionOptions, or NonCriticalExtensionOptions")
+	if body.TimeoutHeight != 0 || len(body.ExtensionOptions) != 0 ||
+		len(body.NonCriticalExtensionOptions) != 0 {
+		return apitypes.TypedData{}, errors.New(
+			"body contains unsupported fields: TimeoutHeight, ExtensionOptions, or NonCriticalExtensionOptions",
+		)
 	}
 
 	if len(authInfo.SignerInfos) != 1 {
-		return apitypes.TypedData{}, fmt.Errorf("invalid number of signer infos provided, expected 1 got %v", len(authInfo.SignerInfos))
+		return apitypes.TypedData{}, fmt.Errorf(
+			"invalid number of signer infos provided, expected 1 got %v",
+			len(authInfo.SignerInfos),
+		)
 	}
 
 	// Validate payload messages
@@ -173,7 +217,10 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	for i, protoMsg := range body.Messages {
 		var m sdk.Msg
 		if err := protoCodec.UnpackAny(protoMsg, &m); err != nil {
-			return apitypes.TypedData{}, fmt.Errorf("could not unpack message object with error %w", err)
+			return apitypes.TypedData{}, fmt.Errorf(
+				"could not unpack message object with error %w",
+				err,
+			)
 		}
 		msgs[i] = m
 	}
@@ -187,7 +234,7 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 
 	signerInfo := authInfo.SignerInfos[0]
 
-	chainID, err := ethermint.ParseChainID(signDoc.ChainId)
+	chainID, err := ParseChainID(signDoc.ChainId)
 	if err != nil {
 		return apitypes.TypedData{}, fmt.Errorf("invalid chain ID passed as argument: %w", err)
 	}
@@ -234,7 +281,9 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 // so the module does not panic if either codec is not found.
 func validateCodecInit() error {
 	if aminoCodec == nil || protoCodec == nil {
-		return errors.New("missing codec: codecs have not been properly initialized using SetEncodingConfig")
+		return errors.New(
+			"missing codec: codecs have not been properly initialized using SetEncodingConfig",
+		)
 	}
 
 	return nil
@@ -267,7 +316,9 @@ func validatePayloadMessages(msgs []sdk.Msg) error {
 		}
 
 		if t != msgType {
-			return errors.New("unable to build EIP-712 payload: different types of messages detected")
+			return errors.New(
+				"unable to build EIP-712 payload: different types of messages detected",
+			)
 		}
 
 		if !msgSigner.Equals(m.GetSigners()[0]) {
