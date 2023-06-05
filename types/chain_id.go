@@ -21,17 +21,7 @@ var (
 		regexEIP155,
 		regexEpochSeparator,
 		regexEpoch))
-
-	chainIDBuilder ChainIDBuilder
 )
-
-// ChainIDBuilder build a chainId that meets the requirements of ethermint
-type ChainIDBuilder func(chainID string) (string, error)
-
-// SetChainIDBuilder return a chainId that meets the requirements of ethermint
-func SetChainIDBuilder(builder ChainIDBuilder) {
-	chainIDBuilder = builder
-}
 
 // IsValidChainID returns false if the given chain identifier is incorrectly formatted.
 func IsValidChainID(chainID string) bool {
@@ -45,20 +35,16 @@ func IsValidChainID(chainID string) bool {
 // ParseChainID parses a string chain identifier's epoch to an Ethereum-compatible
 // chain-id in *big.Int format. The function returns an error if the chain-id has an invalid format
 func ParseChainID(chainID string) (*big.Int, error) {
+	if chainIDParser != nil {
+		return chainIDParser(chainID)
+	}
+
 	chainID = strings.TrimSpace(chainID)
 	if len(chainID) > 48 {
 		return nil, errorsmod.Wrapf(
 			ErrInvalidChainID,
 			"chain-id '%s' cannot exceed 48 chars",
 			chainID,
-		)
-	}
-
-	chainID, err := buildChainID(chainID)
-	if err != nil {
-		return nil, errorsmod.Wrap(
-			ErrInvalidChainID,
-			err.Error(),
 		)
 	}
 
@@ -78,11 +64,4 @@ func ParseChainID(chainID string) (*big.Int, error) {
 	}
 
 	return chainIDInt, nil
-}
-
-func buildChainID(chainID string) (string, error) {
-	if chainIDBuilder == nil {
-		return chainID, nil
-	}
-	return chainIDBuilder(chainID)
 }
